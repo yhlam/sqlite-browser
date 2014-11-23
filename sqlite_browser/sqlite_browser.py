@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import chardet
 import datetime
 import math
 import optparse
@@ -14,6 +15,7 @@ from functools import wraps
 # Py3k compat.
 if sys.version_info[0] == 3:
     basestring = str
+    unicode = str
     from io import StringIO
 else:
     from StringIO import StringIO
@@ -512,7 +514,16 @@ def drop_table(table):
 
 @app.template_filter('value_filter')
 def value_filter(value, max_length=50):
-    value = escape(value)
+    try:
+        value = escape(value)
+    except UnicodeDecodeError as e:
+        charset = chardet.detect(value)
+        encoding = charset.get('encoding')
+        if encoding:
+            value = unicode(value, encoding)
+        else:
+            value = repr(value)
+        value = escape(value)
     if isinstance(value, basestring):
         if len(value) > max_length:
             return ('<span class="truncated">%s</span> '
